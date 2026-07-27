@@ -79,6 +79,21 @@
         <!-- DASHBOARD CONTEÚDO -->
         <div id="dashboard-content" class="hidden space-y-8">
 
+            <!-- FILTRO POR GERENTE (TOPO) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 text-slate-200 font-semibold text-sm">
+                    <i class="fa-solid fa-filter text-emerald-400"></i> Filtrar Visão Geral por Gerente:
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <select id="filter-gerente-top" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 w-full sm:w-72">
+                        <option value="all">Todos os Gerentes (Geral)</option>
+                    </select>
+                    <button onclick="exportarExcel()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 shadow shrink-0">
+                        <i class="fa-solid fa-file-arrow-down"></i> Exportar Excel
+                    </button>
+                </div>
+            </div>
+
             <!-- CARDS DE KPI (Totalizadores + Produtividade) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <!-- Total Corretores -->
@@ -211,23 +226,23 @@
         const dashboardContent = document.getElementById('dashboard-content');
         const searchInput = document.getElementById('table-search');
         const filterStatus = document.getElementById('filter-status');
+        const filterGerenteTop = document.getElementById('filter-gerente-top');
         const syncDot = document.getElementById('sync-dot');
         const syncText = document.getElementById('sync-text');
 
-
-function formatarDataHora(isoString) {
-    if (!isoString) return 'Data indisponível';
-    const data = new Date(isoString);
-    if (isNaN(data.getTime())) return isoString;
-    
-    return data.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
+        function formatarDataHora(isoString) {
+            if (!isoString) return 'Data indisponível';
+            const data = new Date(isoString);
+            if (isNaN(data.getTime())) return isoString;
+            
+            return data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
 
         // Carregar dados salvos do MongoDB assim que abrir a página
         window.addEventListener('DOMContentLoaded', async () => {
@@ -296,17 +311,17 @@ function formatarDataHora(isoString) {
                     syncText.textContent = 'Salvando na nuvem...';
                     syncDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
 
-                    const agora = new Date().toISOString(); // Pega a data e hora exata do momento
+                    const agora = new Date().toISOString(); 
 
-const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-        data: parsedRows, 
-        lastUpdate: agora, // <-- Envia a data atualizada para o banco
-        password: senha 
-    })
-});
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            data: parsedRows, 
+                            lastUpdate: agora, 
+                            password: senha 
+                        })
+                    });
 
                     const result = await response.json();
 
@@ -334,18 +349,56 @@ const response = await fetch(API_URL, {
             welcomeState.classList.add('hidden');
             dashboardContent.classList.remove('hidden');
 
-            updateKPIs();
-            renderTopChart(currentTopMetric);
-            renderNormalCurve();
+            popularFiltroGerentes();
+            atualizarDashboardCompleto();
+        }
+
+        function popularFiltroGerentes() {
+            const gerentesSet = new Set();
+            globalData.forEach(d => {
+                if (d.gerente && d.gerente.trim() !== '') {
+                    gerentesSet.add(d.gerente.trim());
+                }
+            });
+
+            const gerentesArray = Array.from(gerentesSet).sort();
+            const valorAtual = filterGerenteTop.value;
+
+            filterGerenteTop.innerHTML = '<option value="all">Todos os Gerentes (Geral)</option>';
+            gerentesArray.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g;
+                filterGerenteTop.appendChild(opt);
+            });
+
+            if (gerentesArray.includes(valorAtual)) {
+                filterGerenteTop.value = valorAtual;
+            }
+        }
+
+        function getDataFiltradaPorGerente() {
+            const gerenteSel = filterGerenteTop.value;
+            if (gerenteSel === 'all') {
+                return globalData;
+            }
+            return globalData.filter(d => d.gerente && d.gerente.trim().toLowerCase() === gerenteSel.toLowerCase());
+        }
+
+        function atualizarDashboardCompleto() {
+            const dadosAtuais = getDataFiltradaPorGerente();
+            updateKPIs(dadosAtuais);
+            renderTopChart(currentTopMetric, dadosAtuais);
+            renderNormalCurve(dadosAtuais);
             filterAndRender();
         }
 
-        function updateKPIs() {
-            const totalCorretores = globalData.length;
-            const produtivos = globalData.filter(d => d.cpfs >= 5).length;
-            const menos5 = globalData.filter(d => d.cpfs > 0 && d.cpfs < 5).length;
-            const improdutivos = globalData.filter(d => d.cpfs === 0).length;
-            const foraCurva = globalData.filter(d => d.cpfs > 10).length;
+        function updateKPIs(dados) {
+            const totalCorretores = dados.length;
+            const produtivos = dados.filter(d => d.cpfs >= 5).length;
+            const menos5 = dados.filter(d => d.cpfs > 0 && d.cpfs < 5).length;
+            const improdutivos = dados.filter(d => d.cpfs === 0).length;
+            const foraCurva = dados.filter(d => d.cpfs > 10).length;
 
             document.getElementById('kpi-corretores').textContent = totalCorretores;
             document.getElementById('kpi-produtivos').textContent = produtivos;
@@ -363,11 +416,11 @@ const response = await fetch(API_URL, {
             const titles = { leads: 'Top 10 Corretores por Leads', cpfs: 'Top 10 Corretores por CPFs Analisados', agendamentos: 'Top 10 Corretores por Agendamentos' };
             document.getElementById('top-chart-title').innerHTML = `<i class="fa-solid fa-ranking-star text-emerald-400"></i> ${titles[metric]}`;
 
-            renderTopChart(metric);
+            renderTopChart(metric, getDataFiltradaPorGerente());
         }
 
-        function renderTopChart(metric) {
-            const sorted = [...globalData].sort((a, b) => b[metric] - a[metric]).slice(0, 10);
+        function renderTopChart(metric, dados) {
+            const sorted = [...dados].sort((a, b) => b[metric] - a[metric]).slice(0, 10);
             const ctx = document.getElementById('chartTopMetric').getContext('2d');
             if (chartTopInstance) chartTopInstance.destroy();
 
@@ -396,13 +449,13 @@ const response = await fetch(API_URL, {
             });
         }
 
-        function renderNormalCurve() {
-            const cpfsList = globalData.map(d => d.cpfs);
+        function renderNormalCurve(dados) {
+            const cpfsList = dados.map(d => d.cpfs);
             const mean = cpfsList.reduce((a, b) => a + b, 0) / (cpfsList.length || 1);
             document.getElementById('media-cpfs-badge').textContent = `Média: ${mean.toFixed(1)} CPFs`;
 
             const bins = { '0': 0, '1-3': 0, '4-6': 0, '7-10': 0, '>10': 0 };
-            globalData.forEach(d => {
+            dados.forEach(d => {
                 let val = d.cpfs;
                 if (val === 0) bins['0']++;
                 else if (val >= 1 && val <= 3) bins['1-3']++;
@@ -490,10 +543,11 @@ const response = await fetch(API_URL, {
         }
 
         function filterAndRender() {
+            const dadosBase = getDataFiltradaPorGerente();
             const term = searchInput.value.toLowerCase();
             const status = filterStatus.value;
 
-            const filtered = globalData.filter(item => {
+            const filtered = dadosBase.filter(item => {
                 const matchText = (item.corretor && item.corretor.toLowerCase().includes(term)) ||
                                   (item.gerente && item.gerente.toLowerCase().includes(term));
                 
@@ -529,8 +583,34 @@ const response = await fetch(API_URL, {
             renderTable(filtered);
         }
 
+        function exportarExcel() {
+            const dadosParaExportar = getDataFiltradaPorGerente();
+            if (dadosParaExportar.length === 0) {
+                alert('Não há dados para exportar com o filtro atual.');
+                return;
+            }
+
+            // Mapeia os dados amigavelmente para o Excel
+            const dadosFormatados = dadosParaExportar.map(d => ({
+                "Gerente": d.gerente || '',
+                "Corretor": d.corretor || '',
+                "Leads": d.leads ?? 0,
+                "CPFs Analisados": d.cpfs ?? 0,
+                "Agendamentos": d.agendamentos ?? 0,
+                "Status": d.cpfs >= 5 ? 'Produtivo' : (d.cpfs > 0 ? 'Em Desenvolvimento' : 'Improdutivo')
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Desempenho");
+
+            const nomeGerenteSufixo = filterGerenteTop.value === 'all' ? 'Geral' : filterGerenteTop.value.replace(/[^a-zA-Z0-9]/g, '_');
+            XLSX.writeFile(workbook, `Performance_House_${nomeGerenteSufixo}.xlsx`);
+        }
+
         searchInput.addEventListener('input', filterAndRender);
         filterStatus.addEventListener('change', filterAndRender);
+        filterGerenteTop.addEventListener('change', atualizarDashboardCompleto);
     </script>
 </body>
 </html>
