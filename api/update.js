@@ -34,19 +34,23 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'POST') {
-            // Recebe os dados do Excel processados pelo frontend e salva no MongoDB
-            const { data, lastUpdate, password } = req.body;
+    const { data, lastUpdate, password } = req.body;
 
-            // Proteção simples por senha no backend
-            if (password !== 'mrv2026') {
-                return res.status(401).json({ error: 'Senha incorreta!' });
-            }
+    if (password !== 'mrv2026') {
+        return res.status(401).json({ error: 'Senha incorreta!' });
+    }
 
-            await collection.updateOne(
-                { type: 'latest_metrics' },
-                { $set: { data, lastUpdate, updatedAt: new Date() } },
-                { upsert: true }
-            );
+    // Se o frontend não enviar a data, gera o horário atual do servidor
+    const dataAtualizacao = lastUpdate || new Date().toISOString();
+
+    await collection.updateOne(
+        { type: 'latest_metrics' },
+        { $set: { data, lastUpdate: dataAtualizacao, updatedAt: new Date() } },
+        { upsert: true }
+    );
+
+    return res.status(200).json({ success: true, lastUpdate: dataAtualizacao });
+}
 
             return res.status(200).json({ success: true, message: 'Dados atualizados no MongoDB com sucesso!' });
         }
