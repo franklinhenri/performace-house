@@ -107,6 +107,21 @@
     <h3 id="kpi-leads" class="text-3xl font-bold text-white mt-2">0</h3>
     <p class="text-xs text-emerald-400 mt-1">Total atribuído na base</p>
 </div>
+<!-- Total CPFs Analisados -->
+<div class="bg-slate-800 border border-purple-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+    <div class="absolute right-4 top-4 text-purple-500/20 text-4xl"><i class="fa-solid fa-id-card"></i></div>
+    <p class="text-xs font-medium text-purple-400 uppercase tracking-wider">CPFs Analisados</p>
+    <h3 id="kpid-cpfs" class="text-3xl font-bold text-white mt-2">0</h3>
+    <p class="text-xs text-purple-400 mt-1">Total na base filtrada</p>
+</div>
+
+<!-- Total Agendamentos -->
+<div class="bg-slate-800 border border-cyan-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+    <div class="absolute right-4 top-4 text-cyan-500/20 text-4xl"><i class="fa-solid fa-calendar-check"></i></div>
+    <p class="text-xs font-medium text-cyan-400 uppercase tracking-wider">Agendamentos</p>
+    <h3 id="kpid-agendamentos" class="text-3xl font-bold text-white mt-2">0</h3>
+    <p class="text-xs text-cyan-400 mt-1">Total na base filtrada</p>
+</div>
                 <!-- Total Corretores -->
                 <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
                     <div class="absolute right-4 top-4 text-slate-500/20 text-4xl"><i class="fa-solid fa-users"></i></div>
@@ -487,14 +502,19 @@
         }
 
         function updateKPIs(dados) {
-    const totalLeads = dados.reduce((acc, d) => acc + (Number(d.leads) || 0), 0); // <-- Adicione esta linha
+    const totalLeads = dados.reduce((acc, d) => acc + (Number(d.leads) || 0), 0);
+    const totalCpfs = dados.reduce((acc, d) => acc + (Number(d.cpfs) || 0), 0); // <-- Adicione esta linha
+    const totalAgendamentos = dados.reduce((acc, d) => acc + (Number(d.agendamentos) || 0), 0); // <-- Adicione esta linha
+    
     const totalCorretores = dados.length;
     const produtivos = dados.filter(d => d.cpfs >= 5).length;
     const menos5 = dados.filter(d => d.cpfs > 0 && d.cpfs < 5).length;
     const improdutivos = dados.filter(d => d.cpfs === 0).length;
     const foraCurva = dados.filter(d => d.cpfs > 10).length;
 
-    document.getElementById('kpi-leads').textContent = totalLeads; // <-- Adicione esta linha
+    document.getElementById('kpi-leads').textContent = totalLeads;
+    document.getElementById('kpid-cpfs').textContent = totalCpfs; // <-- Adicione esta linha
+    document.getElementById('kpid-agendamentos').textContent = totalAgendamentos; // <-- Adicione esta linha
     document.getElementById('kpi-corretores').textContent = totalCorretores;
     document.getElementById('kpi-produtivos').textContent = produtivos;
     document.getElementById('kpi-menos-5').textContent = menos5;
