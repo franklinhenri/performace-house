@@ -100,6 +100,13 @@
 
             <!-- CARDS DE KPI (Totalizadores + Produtividade) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+<!-- Total Leads Distribuídos -->
+<div class="bg-slate-800 border border-emerald-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+    <div class="absolute right-4 top-4 text-emerald-500/20 text-4xl"><i class="fa-solid fa-chart-line"></i></div>
+    <p class="text-xs font-medium text-emerald-400 uppercase tracking-wider">Leads Distribuídos</p>
+    <h3 id="kpi-leads" class="text-3xl font-bold text-white mt-2">0</h3>
+    <p class="text-xs text-emerald-400 mt-1">Total atribuído na base</p>
+</div>
                 <!-- Total Corretores -->
                 <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
                     <div class="absolute right-4 top-4 text-slate-500/20 text-4xl"><i class="fa-solid fa-users"></i></div>
@@ -480,18 +487,20 @@
         }
 
         function updateKPIs(dados) {
-            const totalCorretores = dados.length;
-            const produtivos = dados.filter(d => d.cpfs >= 5).length;
-            const menos5 = dados.filter(d => d.cpfs > 0 && d.cpfs < 5).length;
-            const improdutivos = dados.filter(d => d.cpfs === 0).length;
-            const foraCurva = dados.filter(d => d.cpfs > 10).length;
+    const totalLeads = dados.reduce((acc, d) => acc + (Number(d.leads) || 0), 0); // <-- Adicione esta linha
+    const totalCorretores = dados.length;
+    const produtivos = dados.filter(d => d.cpfs >= 5).length;
+    const menos5 = dados.filter(d => d.cpfs > 0 && d.cpfs < 5).length;
+    const improdutivos = dados.filter(d => d.cpfs === 0).length;
+    const foraCurva = dados.filter(d => d.cpfs > 10).length;
 
-            document.getElementById('kpi-corretores').textContent = totalCorretores;
-            document.getElementById('kpi-produtivos').textContent = produtivos;
-            document.getElementById('kpi-menos-5').textContent = menos5;
-            document.getElementById('kpi-imrodutivos').textContent = improdutivos;
-            document.getElementById('kpi-fora-curva').textContent = foraCurva;
-        }
+    document.getElementById('kpi-leads').textContent = totalLeads; // <-- Adicione esta linha
+    document.getElementById('kpi-corretores').textContent = totalCorretores;
+    document.getElementById('kpi-produtivos').textContent = produtivos;
+    document.getElementById('kpi-menos-5').textContent = menos5;
+    document.getElementById('kpi-imrodutivos').textContent = improdutivos;
+    document.getElementById('kpi-fora-curva').textContent = foraCurva;
+}
 
         function switchTab(tab) {
             activeTab = tab;
