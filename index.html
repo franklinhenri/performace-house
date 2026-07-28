@@ -12,13 +12,16 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .table-row-hover:hover {
-            background-color: rgba(30, 41, 59, 0.8) !important;
-            transform: scale(1.002);
+            background-color: rgb(14 117 52 / 50%) !important;
             transition: all 0.15s ease-in-out;
+		cursor: pointer;
         }
         th.sortable {
             cursor: pointer;
@@ -33,27 +36,28 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen">
 
     <!-- HEADER -->
-    <header class="bg-slate-800 border-b border-slate-700 shadow-lg sticky top-0 z-50">
+    <!-- HEADER -->
+    <header class="bg-slate-900 border-b border-emerald-900/40 shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
-                <div class="bg-emerald-500 text-slate-900 p-2.5 rounded-xl font-bold shadow-md">
-                    <i class="fa-solid fa-chart-line text-xl"></i>
+                <div class="bg-slate-900 p-1 rounded-xl flex items-center justify-center">
+                    <img src="https://www.mrv.com.br/content/experience-fragments/conhecer/us/en/site/header/master/_jcr_content/root/header_copy/header_logo_image.coreimg.svg/1762870879014/logo-mrv.svg" alt="MRV Logo" class="h-9 w-auto">
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-white">Performance House</h1>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">Performance House <span class="text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">MRV</span></h1>
                     <p class="text-xs text-slate-400">Dashboard Interativo de Vendas & Produtividade</p>
                 </div>
             </div>
 
             <!-- Status do Banco & Upload -->
             <div class="flex flex-wrap items-center gap-3">
-                <div id="sync-status" class="text-xs bg-slate-900/80 border border-slate-700 px-3 py-2 rounded-xl text-slate-400 flex items-center gap-2">
+                <div id="sync-status" class="text-xs bg-slate-900/80 border border-slate-800 px-3 py-2 rounded-xl text-slate-400 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="sync-dot"></span>
                     <span id="sync-text">Conectando à nuvem...</span>
                 </div>
 
-                <div class="flex items-center gap-3 bg-slate-900/60 p-2 rounded-xl border border-slate-700">
-                    <label for="excel-file" class="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow">
+                <div class="flex items-center gap-3 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+                    <label onClick="abrirModalImportacao()" class="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow">
                         <i class="fa-solid fa-file-excel"></i> Importar XLSX
                     </label>
                     <input type="file" id="excel-file" accept=".xlsx, .xls" class="hidden" />
@@ -133,7 +137,8 @@
                 </div>
             </div>
 
-            <!-- SEÇÃO DE GRÁFICOS -->
+
+            <!-- SEÇÃO DE GRÁFICOS: TOP 10 & CURVA (SEGUNDO) -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Top 10 com seletor (Leads, CPFs, Agendamentos) -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
@@ -166,94 +171,166 @@
                 </div>
             </div>
 
-            <!-- TABELA DE DADOS & FILTROS -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
-                <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+
+ <!-- SEÇÃO: COMPARATIVO ENTRE GERENTES (PRIMEIRO) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-6">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <h3 class="text-base font-semibold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-table text-emerald-400"></i> Detalhamento por Corretor
+                        <i class="fa-solid fa-people-arrows text-cyan-400"></i> Comparativo de Desempenho entre Gerentes
                     </h3>
-                    
-                    <!-- Filtros e Busca -->
-                    <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                        <select id="filter-status" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500">
-                            <option value="all">Todos os Status</option>
-                            <option value="produtivo">Produtivos (&ge; 5 CPFs)</option>
-                            <option value="menos-5">Menos de 5 (1 a 4)</option>
-                            <option value="imrodutivo">Improdutivos (0 CPFs)</option>
-                            <option value="fora-curva">Fora da Curva (> 10 CPFs)</option>
-                        </select>
-                        <input type="text" id="table-search" placeholder="Buscar corretor ou gerente..." class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition w-full sm:w-64" />
+                    <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-xs">
+                        <button onclick="changeManagerMetric('agendamentos')" id="btn-mg-agend" class="px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium transition">Agendamentos</button>
+                        <button onclick="changeManagerMetric('leads')" id="btn-mg-leads" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition">Leads</button>
+                        <button onclick="changeManagerMetric('cpfs')" id="btn-mg-cpfs" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition">CPFs</button>
+                        <button onclick="changeManagerMetric('produtividade')" id="btn-mg-prod" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition">% Produtivos</button>
                     </div>
                 </div>
-
-                <div class="overflow-x-auto rounded-xl border border-slate-700/60">
-                    <table class="w-full text-left text-sm text-slate-300">
-                        <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
-                            <tr>
-                                <th onclick="sortTable('gerente')" class="px-6 py-3.5 sortable">Gerente <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
-                                <th onclick="sortTable('corretor')" class="px-6 py-3.5 sortable">Corretor <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
-                                <th onclick="sortTable('leads')" class="px-6 py-3.5 text-right sortable">Leads <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
-                                <th onclick="sortTable('cpfs')" class="px-6 py-3.5 text-right sortable">CPFs Analisados <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
-                                <th onclick="sortTable('agendamentos')" class="px-6 py-3.5 text-right sortable">Agendamentos <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
-                                <th onclick="sortTable('status')" class="px-6 py-3.5 text-center sortable">Status / Avaliação <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="divide-y divide-slate-700/60 bg-slate-800/40">
-                        </tbody>
-                    </table>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div class="lg:col-span-2 relative h-80">
+                        <canvas id="chartManagerCompare"></canvas>
+                    </div>
+                    <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-4 space-y-3">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-400"></i> Destaque por Métrica
+                        </h4>
+                        <div id="manager-highlights" class="space-y-3 text-sm">
+                            <!-- Preenchido dinamicamente via JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
+
+
+            <!-- SEÇÃO DE ABAS E TABELAS -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-6">
+                <!-- Abas Inferiores -->
+                <div class="flex items-center border-b border-slate-700 gap-6">
+                    <button onclick="switchTab('corretores')" id="tab-btn-corretores" class="pb-3 text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400 transition flex items-center gap-2">
+                        <i class="fa-solid fa-users-viewfinder"></i> Detalhamento por Corretor
+                    </button>
+                    <button onclick="switchTab('gerentes')" id="tab-btn-gerentes" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white transition flex items-center gap-2">
+                        <i class="fa-solid fa-building-user"></i> Detalhamento por Gerente
+                    </button>
+                </div>
+
+                <!-- ABA 1: CORRETORES -->
+                <div id="tab-content-corretores" class="space-y-4">
+                    <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-table text-emerald-400"></i> Listagem de Corretores
+                        </h3>
+                        
+                        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                            <select id="filter-status" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-emerald-500">
+                                <option value="all">Todos os Status</option>
+                                <option value="produtivo">Produtivos (&ge; 5 CPFs)</option>
+                                <option value="menos-5">Menos de 5 (1 a 4)</option>
+                                <option value="imrodutivo">Improdutivos (0 CPFs)</option>
+                                <option value="fora-curva">Fora da Curva (> 10 CPFs)</option>
+                            </select>
+                            <input type="text" id="table-search" placeholder="Buscar corretor ou gerente..." class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition w-full sm:w-64" />
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-700/60">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
+                                <tr>
+                                    <th onclick="sortTableCorretor('gerente')" class="px-6 py-3.5 sortable">Gerente <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableCorretor('corretor')" class="px-6 py-3.5 sortable">Corretor <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableCorretor('leads')" class="px-6 py-3.5 text-right sortable">Leads <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableCorretor('cpfs')" class="px-6 py-3.5 text-right sortable">CPFs Analisados <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableCorretor('agendamentos')" class="px-6 py-3.5 text-right sortable">Agendamentos <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableCorretor('status')" class="px-6 py-3.5 text-center sortable">Status / Avaliação <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body-corretores" class="divide-y divide-slate-700/60 bg-slate-800/40">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA 2: GERENTES -->
+                <div id="tab-content-gerentes" class="hidden space-y-4">
+                    <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+                        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-table text-cyan-400"></i> Listagem Consolidada por Gerente
+                        </h3>
+                        <input type="text" id="table-search-gerente" placeholder="Buscar gerente..." class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition w-full sm:w-64" />
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-700/60">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 font-semibold border-b border-slate-700">
+                                <tr>
+                                    <th onclick="sortTableGerente('gerente')" class="px-6 py-3.5 sortable">Gerente <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableGerente('totalCorretores')" class="px-6 py-3.5 text-right sortable">Total Corretores <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableGerente('leads')" class="px-6 py-3.5 text-right sortable">Total Leads <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableGerente('cpfs')" class="px-6 py-3.5 text-right sortable">Total CPFs <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableGerente('agendamentos')" class="px-6 py-3.5 text-right sortable">Total Agendamentos <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                    <th onclick="sortTableGerente('produtividade')" class="px-6 py-3.5 text-right sortable">Taxa Produtividade <i class="fa-solid fa-sort ml-1 text-slate-500"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body-gerentes" class="divide-y divide-slate-700/60 bg-slate-800/40">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
+
+
+
 
     </main>
 
     <!-- SCRIPT -->
     <script>
-        // URL da API hospedada na Vercel
         const API_URL = 'https://performace-house.vercel.app/api/update';
 
         let globalData = [];
         let currentTopMetric = 'leads';
+        let currentManagerMetric = 'agendamentos';
         let chartTopInstance = null;
         let chartNormalInstance = null;
-        let currentSortColumn = 'agendamentos';
-        let currentSortAsc = false;
+        let chartManagerInstance = null;
+        
+        // Ordenação Corretores
+        let currentSortColumnCorretor = 'agendamentos';
+        let currentSortAscCorretor = false;
+
+        // Ordenação Gerentes
+        let currentSortColumnGerente = 'agendamentos';
+        let currentSortAscGerente = false;
+
+        let activeTab = 'corretores';
 
         const fileInput = document.getElementById('excel-file');
         const fileNameSpan = document.getElementById('file-name');
         const welcomeState = document.getElementById('welcome-state');
         const dashboardContent = document.getElementById('dashboard-content');
         const searchInput = document.getElementById('table-search');
+        const searchInputGerente = document.getElementById('table-search-gerente');
         const filterStatus = document.getElementById('filter-status');
         const filterGerenteTop = document.getElementById('filter-gerente-top');
         const syncDot = document.getElementById('sync-dot');
         const syncText = document.getElementById('sync-text');
 
-        function formatarDataHora(isoString) {
-            if (!isoString) return 'Data indisponível';
-            const data = new Date(isoString);
-            if (isNaN(data.getTime())) return isoString;
-            
-            return data.toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        // Carregar dados salvos do MongoDB assim que abrir a página
         window.addEventListener('DOMContentLoaded', async () => {
             try {
                 const response = await fetch(API_URL);
                 const result = await response.json();
+                const dadosCarregados = Array.isArray(result) ? result : (result.data || []);
                 
-                if (result.data && result.data.length > 0) {
-                    globalData = result.data;
+                if (dadosCarregados.length > 0) {
+                    globalData = dadosCarregados;
                     syncDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-                    syncText.textContent = `Sincronizado (${new Date(result.lastUpdate).toLocaleDateString('pt-BR')})`;
+                    const dataAtualizacao = result.lastUpdate ? new Date(result.lastUpdate).toLocaleDateString('pt-BR') : 'Nuvem';
+                    syncText.textContent = `Sincronizado (${dataAtualizacao})`;
                     exibirDashboard();
                 } else {
                     syncDot.className = 'w-2 h-2 rounded-full bg-blue-400';
@@ -266,7 +343,6 @@
             }
         });
 
-        // Manipular upload do Excel e enviar para a Vercel/MongoDB
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -285,29 +361,37 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    let sheetName = workbook.SheetNames.includes('Resumo') ? 'Resumo' : workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    
+                    let parsedRows = [];
+                    
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                    const parsedRows = jsonRows.map(row => {
-                        const normalized = {};
-                        for (let key in row) {
-                            let cleanKey = key.trim().toLowerCase();
-                            if (cleanKey.includes('gerente')) normalized.gerente = row[key];
-                            else if (cleanKey.includes('corretor')) normalized.corretor = row[key];
-                            else if (cleanKey.includes('lead')) normalized.leads = Number(row[key]) || 0;
-                            else if (cleanKey.includes('analisado') || cleanKey.includes('cpf')) normalized.cpfs = Number(row[key]) || 0;
-                            else if (cleanKey.includes('agendamento')) normalized.agendamentos = Number(row[key]) || 0;
-                        }
-                        return normalized;
-                    }).filter(r => r.corretor);
+                        const rowsFromSheet = jsonRows.map(row => {
+                            const normalized = {};
+                            for (let key in row) {
+                                let cleanKey = key.trim().toLowerCase();
+                                if (cleanKey.includes('gerente')) normalized.gerente = row[key];
+                                else if (cleanKey.includes('corretor')) normalized.corretor = row[key];
+                                else if (cleanKey.includes('lead')) normalized.leads = Number(row[key]) || 0;
+                                else if (cleanKey.includes('analisado') || cleanKey.includes('cpf')) normalized.cpfs = Number(row[key]) || 0;
+                                else if (cleanKey.includes('agendamento')) normalized.agendamentos = Number(row[key]) || 0;
+                            }
+                            if (!normalized.gerente && sheetName.toLowerCase() !== 'resumo') {
+                                normalized.gerente = sheetName;
+                            }
+                            return normalized;
+                        }).filter(r => r.corretor && r.corretor.toString().trim() !== '');
+
+                        parsedRows = parsedRows.concat(rowsFromSheet);
+                    });
 
                     if (parsedRows.length === 0) {
-                        alert('Nenhum dado válido encontrado na planilha.');
+                        alert('Nenhum dado válido encontrado nas planilhas.');
                         return;
                     }
 
-                    // Enviar para a API na Vercel (MongoDB)
                     syncText.textContent = 'Salvando na nuvem...';
                     syncDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
 
@@ -330,7 +414,7 @@
                         syncDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
                         syncText.textContent = 'Salvo na nuvem com sucesso!';
                         exibirDashboard();
-                        alert('Planilha importada e salva no banco de dados com sucesso!');
+                        alert('Planilhas importadas e salvas no banco de dados com sucesso!');
                     } else {
                         alert('Erro ao salvar no servidor: ' + (result.error || 'Erro desconhecido'));
                         syncDot.className = 'w-2 h-2 rounded-full bg-rose-500';
@@ -388,9 +472,11 @@
         function atualizarDashboardCompleto() {
             const dadosAtuais = getDataFiltradaPorGerente();
             updateKPIs(dadosAtuais);
+            renderManagerComparison(currentManagerMetric);
             renderTopChart(currentTopMetric, dadosAtuais);
             renderNormalCurve(dadosAtuais);
-            filterAndRender();
+            filterAndRenderCorretores();
+            filterAndRenderGerentes();
         }
 
         function updateKPIs(dados) {
@@ -405,6 +491,26 @@
             document.getElementById('kpi-menos-5').textContent = menos5;
             document.getElementById('kpi-imrodutivos').textContent = improdutivos;
             document.getElementById('kpi-fora-curva').textContent = foraCurva;
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            const btnCorretores = document.getElementById('tab-btn-corretores');
+            const btnGerentes = document.getElementById('tab-btn-gerentes');
+            const contentCorretores = document.getElementById('tab-content-corretores');
+            const contentGerentes = document.getElementById('tab-content-gerentes');
+
+            if (tab === 'corretores') {
+                btnCorretores.className = 'pb-3 text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400 transition flex items-center gap-2';
+                btnGerentes.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white transition flex items-center gap-2';
+                contentCorretores.classList.remove('hidden');
+                contentGerentes.classList.add('hidden');
+            } else {
+                btnGerentes.className = 'pb-3 text-sm font-semibold border-b-2 border-cyan-500 text-cyan-400 transition flex items-center gap-2';
+                btnCorretores.className = 'pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white transition flex items-center gap-2';
+                contentGerentes.classList.remove('hidden');
+                contentCorretores.classList.add('hidden');
+            }
         }
 
         function changeTopMetric(metric) {
@@ -494,8 +600,125 @@
             });
         }
 
-        function renderTable(data) {
-            const tbody = document.getElementById('table-body');
+        function changeManagerMetric(metric) {
+            currentManagerMetric = metric;
+            document.getElementById('btn-mg-agend').className = metric === 'agendamentos' ? 'px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium transition' : 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
+            document.getElementById('btn-mg-leads').className = metric === 'leads' ? 'px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium transition' : 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
+            document.getElementById('btn-mg-cpfs').className = metric === 'cpfs' ? 'px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium transition' : 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
+            document.getElementById('btn-mg-prod').className = metric === 'produtividade' ? 'px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium transition' : 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
+
+            renderManagerComparison(metric);
+        }
+
+        function getManagerAggregatedData() {
+            const managerMap = {};
+            globalData.forEach(d => {
+                const mg = d.gerente && d.gerente.trim() !== '' ? d.gerente.trim() : 'Não Definido';
+                if (!managerMap[mg]) {
+                    managerMap[mg] = { gerente: mg, leads: 0, cpfs: 0, agendamentos: 0, totalCorretores: 0, produtivos: 0 };
+                }
+                managerMap[mg].leads += d.leads || 0;
+                managerMap[mg].cpfs += d.cpfs || 0;
+                managerMap[mg].agendamentos += d.agendamentos || 0;
+                managerMap[mg].totalCorretores += 1;
+                if ((d.cpfs || 0) >= 5) {
+                    managerMap[mg].produtivos += 1;
+                }
+            });
+
+            return Object.values(managerMap).map(item => {
+                const produtividade = item.totalCorretores > 0 ? (item.produtivos / item.totalCorretores) * 100 : 0;
+                return {
+                    ...item,
+                    produtividade: Number(produtividade.toFixed(1))
+                };
+            });
+        }
+
+        function renderManagerComparison(metric) {
+            const managerArray = getManagerAggregatedData();
+            managerArray.sort((a, b) => b[metric] - a[metric]);
+
+            const labels = managerArray.map(item => item.gerente);
+            const values = managerArray.map(item => item[metric]);
+
+            const ctx = document.getElementById('chartManagerCompare').getContext('2d');
+            if (chartManagerInstance) chartManagerInstance.destroy();
+
+            const metricLabels = {
+                agendamentos: { label: 'Total de Agendamentos', color: '#06b6d4', format: val => val },
+                leads: { label: 'Total de Leads', color: '#10b981', format: val => val },
+                cpfs: { label: 'Total de CPFs Analisados', color: '#a855f7', format: val => val },
+                produtividade: { label: 'Taxa de Produtividade (%)', color: '#f59e0b', format: val => val + '%' }
+            };
+
+            const config = metricLabels[metric];
+
+            chartManagerInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: config.label,
+                        data: values,
+                        backgroundColor: config.color,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${config.label}: ${config.format(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+
+            const highlightsContainer = document.getElementById('manager-highlights');
+            highlightsContainer.innerHTML = '';
+
+            const metricsList = [
+                { key: 'agendamentos', name: 'Agendamentos', icon: 'fa-calendar-check', color: 'text-cyan-400' },
+                { key: 'leads', name: 'Leads', icon: 'fa-user-plus', color: 'text-emerald-400' },
+                { key: 'cpfs', name: 'CPFs Analisados', icon: 'fa-id-card', color: 'text-purple-400' },
+                { key: 'produtividade', name: 'Taxa Produtivos', icon: 'fa-chart-pie', color: 'text-amber-400' }
+            ];
+
+            metricsList.forEach(m => {
+                const sortedCopy = [...managerArray].sort((a, b) => b[m.key] - a[m.key]);
+                const topManager = sortedCopy[0];
+                if (topManager) {
+                    const valFormatted = m.key === 'produtividade' ? topManager[m.key] + '%' : topManager[m.key];
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/60';
+                    div.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid ${m.icon} ${m.color}"></i>
+                            <span class="text-slate-300 text-xs">${m.name}:</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-white text-xs">${topManager.gerente}</span>
+                            <span class="text-xs font-semibold ${m.color} ml-1.5">(${valFormatted})</span>
+                        </div>
+                    `;
+                    highlightsContainer.appendChild(div);
+                }
+            });
+        }
+
+        function renderTableCorretores(data) {
+            const tbody = document.getElementById('table-body-corretores');
             tbody.innerHTML = '';
 
             data.forEach(row => {
@@ -524,25 +747,54 @@
                     <td class="px-6 py-4 text-right font-semibold text-emerald-400">${row.leads ?? 0}</td>
                     <td class="px-6 py-4 text-right font-semibold text-purple-300">${cpfs}</td>
                     <td class="px-6 py-4 text-right font-semibold text-amber-300">${row.agendamentos ?? 0}</td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="px-2.5 py-1 rounded-full text-xs font-medium border ${badgeColor}">${statusText}</span>
+                    <td class="px-25 py-4 text-center">
+                        <span class="px-2.5 py-2 rounded-full text-xs font-medium border ${badgeColor}">${statusText}</span>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function sortTable(column) {
-            if (currentSortColumn === column) {
-                currentSortAsc = !currentSortAsc;
-            } else {
-                currentSortColumn = column;
-                currentSortAsc = true;
-            }
-            filterAndRender();
+        function renderTableGerentes(data) {
+            const tbody = document.getElementById('table-body-gerentes');
+            tbody.innerHTML = '';
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'table-row-hover transition';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-white">${row.gerente}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-slate-200">${row.totalCorretores}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-emerald-400">${row.leads}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-purple-300">${row.cpfs}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-amber-300">${row.agendamentos}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-cyan-400">${row.produtividade}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
-        function filterAndRender() {
+        function sortTableCorretor(column) {
+            if (currentSortColumnCorretor === column) {
+                currentSortAscCorretor = !currentSortAscCorretor;
+            } else {
+                currentSortColumnCorretor = column;
+                currentSortAscCorretor = true;
+            }
+            filterAndRenderCorretores();
+        }
+
+        function sortTableGerente(column) {
+            if (currentSortColumnGerente === column) {
+                currentSortAscGerente = !currentSortAscGerente;
+            } else {
+                currentSortColumnGerente = column;
+                currentSortAscGerente = true;
+            }
+            filterAndRenderGerentes();
+        }
+
+        function filterAndRenderCorretores() {
             const dadosBase = getDataFiltradaPorGerente();
             const term = searchInput.value.toLowerCase();
             const status = filterStatus.value;
@@ -561,10 +813,10 @@
             });
 
             filtered.sort((a, b) => {
-                let valA = a[currentSortColumn];
-                let valB = b[currentSortColumn];
+                let valA = a[currentSortColumnCorretor];
+                let valB = b[currentSortColumnCorretor];
 
-                if (currentSortColumn === 'status') {
+                if (currentSortColumnCorretor === 'status') {
                     valA = a.cpfs >= 5 ? 2 : (a.cpfs > 0 ? 1 : 0);
                     valB = b.cpfs >= 5 ? 2 : (b.cpfs > 0 ? 1 : 0);
                 }
@@ -572,15 +824,41 @@
                 if (typeof valA === 'string') {
                     valA = valA.toLowerCase();
                     valB = valB.toLowerCase();
-                    if (valA < valB) return currentSortAsc ? -1 : 1;
-                    if (valA > valB) return currentSortAsc ? 1 : -1;
+                    if (valA < valB) return currentSortAscCorretor ? -1 : 1;
+                    if (valA > valB) return currentSortAscCorretor ? 1 : -1;
                     return 0;
                 } else {
-                    return currentSortAsc ? valA - valB : valB - valA;
+                    return currentSortAscCorretor ? valA - valB : valB - valA;
                 }
             });
 
-            renderTable(filtered);
+            renderTableCorretores(filtered);
+        }
+
+        function filterAndRenderGerentes() {
+            const gerentesArray = getManagerAggregatedData();
+            const term = searchInputGerente.value.toLowerCase();
+
+            const filtered = gerentesArray.filter(item => {
+                return item.gerente.toLowerCase().includes(term);
+            });
+
+            filtered.sort((a, b) => {
+                let valA = a[currentSortColumnGerente];
+                let valB = b[currentSortColumnGerente];
+
+                if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                    if (valA < valB) return currentSortAscGerente ? -1 : 1;
+                    if (valA > valB) return currentSortAscGerente ? 1 : -1;
+                    return 0;
+                } else {
+                    return currentSortAscGerente ? valA - valB : valB - valA;
+                }
+            });
+
+            renderTableGerentes(filtered);
         }
 
         function exportarExcel() {
@@ -590,7 +868,6 @@
                 return;
             }
 
-            // Mapeia os dados amigavelmente para o Excel
             const dadosFormatados = dadosParaExportar.map(d => ({
                 "Gerente": d.gerente || '',
                 "Corretor": d.corretor || '',
@@ -602,15 +879,459 @@
 
             const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Desempenho");
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Desempenho_Corretores");
+
+            const gerentesResumo = getManagerAggregatedData();
+            const dadosGerentesFormatados = gerentesResumo.map(g => ({
+                "Gerente": g.gerente,
+                "Total Corretores": g.totalCorretores,
+                "Total Leads": g.leads,
+                "Total CPFs": g.cpfs,
+                "Total Agendamentos": g.agendamentos,
+                "Taxa de Produtividade (%)": g.produtividade + '%'
+            }));
+
+            const worksheetGerentes = XLSX.utils.json_to_sheet(dadosGerentesFormatados);
+            XLSX.utils.book_append_sheet(workbook, worksheetGerentes, "Desempenho_Gerentes");
 
             const nomeGerenteSufixo = filterGerenteTop.value === 'all' ? 'Geral' : filterGerenteTop.value.replace(/[^a-zA-Z0-9]/g, '_');
             XLSX.writeFile(workbook, `Performance_House_${nomeGerenteSufixo}.xlsx`);
         }
 
-        searchInput.addEventListener('input', filterAndRender);
-        filterStatus.addEventListener('change', filterAndRender);
+        searchInput.addEventListener('input', filterAndRenderCorretores);
+        filterStatus.addEventListener('change', filterAndRenderCorretores);
+        searchInputGerente.addEventListener('input', filterAndRenderGerentes);
         filterGerenteTop.addEventListener('change', atualizarDashboardCompleto);
     </script>
+
+
+<!-- MODAL DE IMPORTAÇÃO UNIFICADA -->
+<div id="modal-importacao" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-4xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-file-arrow-up text-emerald-400"></i> Importação e Cruzamento de Dados (3 Fontes)
+            </h3>
+            <button onclick="fecharModalImportacao()" class="text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Etapa 1: Seleção dos 3 Arquivos -->
+        <div id="step-inputs" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-2">
+                <label class="block text-xs font-semibold text-slate-300">1. MRV Comercial (Usuários - Excel)</label>
+                <input type="file" id="file-mrv" accept=".xlsx, .xls" class="text-xs text-slate-400 w-full file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" />
+            </div>
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-2">
+                <label class="block text-xs font-semibold text-slate-300">2. Agendamentos (CSV)</label>
+                <input type="file" id="file-agendamentos" accept=".csv" class="text-xs text-slate-400 w-full file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" />
+            </div>
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 space-y-2">
+                <label class="block text-xs font-semibold text-slate-300">3. Funil de Vendas (Excel Planificado)</label>
+                <input type="file" id="file-funil" accept=".xlsx, .xls" class="text-xs text-slate-400 w-full file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer" />
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button onclick="processarCruzamentoCompleto()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-gears"></i> Processar e Gerar Preview
+            </button>
+        </div>
+
+        <!-- Etapa 2: Preview do Resultado -->
+        <div id="step-preview" class="hidden space-y-4 flex-1 flex flex-col min-h-0">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Preview Consolidado (Pronto para Salvar)</span>
+                <span id="preview-count" class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">0 registros</span>
+            </div>
+            <div class="overflow-y-auto rounded-xl border border-slate-700 flex-1 bg-slate-900/40">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-900 sticky top-0 uppercase text-slate-400 font-semibold border-b border-slate-700">
+                        <tr>
+                            <th class="px-4 py-3">Gerente</th>
+                            <th class="px-4 py-3">Corretor</th>
+                            <th class="px-4 py-3 text-right">Leads</th>
+                            <th class="px-4 py-3 text-right">CPFs Analisados</th>
+                            <th class="px-4 py-3 text-right">Agendamentos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-table-body" class="divide-y divide-slate-700/60"></tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2 border-t border-slate-700">
+                <button onclick="voltarParaInputs()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm transition">Refazer Upload</button>
+                <button onclick="enviarDadosAoBanco()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl text-sm font-medium transition shadow flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Confirmar e Salvar no Banco
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let dadosConsolidadosTemp = [];
+
+function abrirModalImportacao() {
+    const senha = prompt("Digite a senha de acesso para atualizar a base de dados:");
+    if (senha !== 'mrv2026') {
+        alert('Senha incorreta! Acesso negado.');
+        return;
+    }
+    window.senhaAtualTemp = senha;
+    document.getElementById('modal-importacao').classList.remove('hidden');
+    document.getElementById('step-inputs').classList.remove('hidden');
+    document.getElementById('step-preview').classList.add('hidden');
+}
+
+function fecharModalImportacao() {
+    document.getElementById('modal-importacao').classList.add('hidden');
+}
+
+function voltarParaInputs() {
+    document.getElementById('step-preview').classList.add('hidden');
+    document.getElementById('step-inputs').classList.remove('hidden');
+}
+
+// Utilitário para padronizar nomes e remover acentos na busca
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    return texto.toString().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// Leitor de Excel (.xlsx)
+async function lerExcel(file) {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+}
+
+// Leitor de CSV (.csv)
+async function lerCsv(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const texto = e.target.result;
+            // Usa PapaParse se disponível, ou parser simples por linha/vírgula/ponto-e-vírgula
+            Papa.parse(texto, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: results => resolve(results.data),
+                error: err => reject(err)
+            });
+        };
+        reader.onerror = reject;
+        reader.readAsText(file, 'UTF-8');
+    });
+}
+
+async function processarCruzamentoCompleto() {
+    const fileMrv = document.getElementById('file-mrv').files[0];
+    const fileAgend = document.getElementById('file-agendamentos').files[0];
+    const fileFunil = document.getElementById('file-funil').files[0];
+
+    if (!fileMrv || !fileAgend || !fileFunil) {
+        alert('Por favor, selecione os três arquivos antes de processar.');
+        return;
+    }
+
+    try {
+        const mapCorretores = new Map();
+
+        // Função interna de normalização rigorosa (remove acentos e padroniza espaços/maiúsculas)
+        function normalizarChave(texto) {
+            if (!texto) return '';
+            return texto.toString()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim()
+                .replace(/\s+/g, ' ');
+        }
+
+        // 1. Processar Base MRV Comercial (Usuários) - Fonte principal de gerentes
+        const bufferMrv = await fileMrv.arrayBuffer();
+        const workbookMrv = XLSX.read(bufferMrv, { type: 'array' });
+        const sheetNameMrv = workbookMrv.SheetNames.find(s => s.toLowerCase().includes('usuário') || s.toLowerCase().includes('comercial')) || workbookMrv.SheetNames[0];
+        const dataMrv = XLSX.utils.sheet_to_json(workbookMrv.Sheets[sheetNameMrv], { range: 1, defval: "" });
+
+        dataMrv.forEach(row => {
+            let corretor = '';
+            let gerente = '';
+            for (let key in row) {
+                let k = key.toLowerCase().trim();
+                if ((k === 'nome' || k.includes('nome')) && !k.includes('gerente') && !k.includes('superior') && !corretor) {
+                    corretor = row[key];
+                }
+                if (k.includes('superior direto') || k.includes('gerente')) {
+                    if (!gerente) gerente = row[key];
+                }
+            }
+
+            // Só adiciona se tiver corretor válido E gerente preenchido
+            if (corretor && corretor.toString().trim() !== '' && corretor.toString().trim().toLowerCase() !== 'nome') {
+                let gerenteClean = gerente ? gerente.toString().trim() : '';
+                
+                // Ignora se o gerente estiver vazio ou inválido
+                if (gerenteClean && gerenteClean.toLowerCase() !== 'nan' && gerenteClean !== '-') {
+                    let nomeClean = corretor.toString().trim();
+                    let chave = normalizarChave(nomeClean);
+                    mapCorretores.set(chave, {
+                        nomeOriginal: nomeClean,
+                        gerente: gerenteClean
+                    });
+                }
+            }
+        });
+
+        // 2. Processar Agendamentos (CSV)
+        const dataAgend = await lerCsvComCodificacao(fileAgend);
+        const mapAgendamentos = new Map();
+
+        dataAgend.forEach(row => {
+            let corretor = '';
+            for (let key in row) {
+                let k = key.toLowerCase().trim();
+                if (k.includes('corretor') || k.includes('nom_corretor') || (k.includes('nome') && !k.includes('gerente') && !k.includes('lead'))) {
+                    corretor = row[key];
+                    if (corretor) break;
+                }
+            }
+            if (corretor && corretor.toString().trim() !== '') {
+                let nomeClean = corretor.toString().trim();
+                let chave = normalizarChave(nomeClean);
+                let atual = mapAgendamentos.get(chave) || 0;
+                mapAgendamentos.set(chave, atual + 1);
+            }
+        });
+
+        // 3. Processar Funil de Vendas (CSV do Funil)
+        const dataFunil = await lerCsvComCodificacao(fileFunil);
+        const mapFunil = new Map();
+
+        dataFunil.forEach(row => {
+            let corretor = '';
+            let status = '';
+            let periodo01 = 0;
+
+            for (let key in row) {
+                let k = key.toLowerCase().trim();
+                if (k.includes('corretor') || k.includes('nom_corretor')) {
+                    corretor = row[key];
+                }
+                if (k.includes('status_funil') || k.includes('status')) {
+                    status = row[key] ? row[key].toString().trim().toUpperCase() : '';
+                }
+                if (k.includes('período 01') || k.includes('periodo_01') || k.includes('periodo 01') || k.includes('período')) {
+                    periodo01 = Number(row[key]) || 0;
+                }
+            }
+
+            if (corretor && corretor.toString().trim() !== '' && corretor.toString().trim() !== 'nom_corretor') {
+                let nomeClean = corretor.toString().trim();
+                let chave = normalizarChave(nomeClean);
+                let metrics = mapFunil.get(chave) || { leads: 0, cpfs: 0 };
+
+                if (status.includes('LEAD')) {
+                    metrics.leads += periodo01;
+                }
+                if (status.includes('CPF ANALISADO') || status.includes('CPF')) {
+                    metrics.cpfs += periodo01;
+                }
+                mapFunil.set(chave, metrics);
+            }
+        });
+
+        // 4. Cruzamento Final Unificado (Restrito apenas aos corretores que possuem gerente válido no cadastro)
+        dadosConsolidadosTemp = [];
+        mapCorretores.forEach((info, chave) => {
+            let agendamentos = mapAgendamentos.get(chave) || 0;
+            let funil = mapFunil.get(chave) || { leads: 0, cpfs: 0 };
+
+            dadosConsolidadosTemp.push({
+                gerente: info.gerente,
+                corretor: info.nomeOriginal,
+                leads: funil.leads,
+                cpfs: funil.cpfs,
+                agendamentos: agendamentos
+            });
+        });
+
+        if (dadosConsolidadosTemp.length === 0) {
+            alert('Nenhum dado correspondente encontrado com gerente atribuído.');
+            return;
+        }
+
+        // Renderizar Preview e abrir a interface/modal de visualização
+        renderizarPreview(dadosConsolidadosTemp);
+        
+        const stepInputs = document.getElementById('step-inputs');
+        const stepPreview = document.getElementById('step-preview');
+        
+        if (stepInputs) stepInputs.classList.add('hidden');
+        if (stepPreview) stepPreview.classList.remove('hidden');
+
+    } catch (error) {
+        alert('Erro ao processar os arquivos. Certifique-se de que os formatos estão corretos.');
+        console.error(error);
+    }
+}
+
+// Auxiliar para leitura de CSV com codificação segura
+function lerCsvComCodificacao(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                if (typeof Papa !== 'undefined') {
+                    Papa.parse(text, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) { resolve(results.data); },
+                        error: function(err) { reject(err); }
+                    });
+                } else {
+                    const workbook = XLSX.read(text, { type: 'string' });
+                    const firstSheet = workbook.SheetNames[0];
+                    resolve(XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" }));
+                }
+            } catch (err) { reject(err); }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file, 'ISO-8859-1');
+    });
+}
+
+// Auxiliar para leitura de CSV com codificação segura
+function lerCsvComCodificacao(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                if (typeof Papa !== 'undefined') {
+                    Papa.parse(text, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) { resolve(results.data); },
+                        error: function(err) { reject(err); }
+                    });
+                } else {
+                    const workbook = XLSX.read(text, { type: 'string' });
+                    const firstSheet = workbook.SheetNames[0];
+                    resolve(XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" }));
+                }
+            } catch (err) { reject(err); }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file, 'ISO-8859-1');
+    });
+}
+
+async function lerExcelOuCsvGenerico(file) {
+    if (file.name.endsWith('.csv')) {
+        return await lerCsvComCodificacao(file);
+    } else {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" });
+    }
+}
+
+// Auxiliar para leitura de CSV com suporte a caracteres especiais
+function lerCsvComCodificacao(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                // Usa Papaparse se disponível ou parser nativo simples
+                if (typeof Papa !== 'undefined') {
+                    Papa.parse(text, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            resolve(results.data);
+                        },
+                        error: function(err) {
+                            reject(err);
+                        }
+                    });
+                } else {
+                    // Fallback para leitura básica baseada em XLSX se PapaParse não estiver carregado
+                    const workbook = XLSX.read(text, { type: 'string' });
+                    const firstSheet = workbook.SheetNames[0];
+                    resolve(XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" }));
+                }
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file, 'ISO-8859-1'); // Compatível com acentuação padrão do Windows/Excel
+    });
+}
+
+async function lerExcelOuCsvGenerico(file) {
+    if (file.name.endsWith('.csv')) {
+        return await lerCsvComCodificacao(file);
+    } else {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" });
+    }
+}
+
+
+
+function renderizarPreview(dados) {
+    const tbody = document.getElementById('preview-table-body');
+    tbody.innerHTML = '';
+    document.getElementById('preview-count').textContent = `${dados.length} registros`;
+
+    dados.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-4 py-2.5 font-medium text-white">${row.gerente}</td>
+            <td class="px-4 py-2.5 text-slate-200">${row.corretor}</td>
+            <td class="px-4 py-2.5 text-right font-semibold text-emerald-400">${row.leads}</td>
+            <td class="px-4 py-2.5 text-right font-semibold text-purple-300">${row.cpfs}</td>
+            <td class="px-4 py-2.5 text-right font-semibold text-amber-300">${row.agendamentos}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function enviarDadosAoBanco() {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                data: dadosConsolidadosTemp, 
+                lastUpdate: new Date().toISOString(), 
+                password: window.senhaAtualTemp 
+            })
+        });
+
+        if (response.ok) {
+            alert('Dados importados, cruzados e salvos no banco com sucesso!');
+            fecharModalImportacao();
+            location.reload(); // Atualiza a tela para refletir os novos dados
+        } else {
+            alert('Erro ao salvar no servidor.');
+        }
+    } catch (error) {
+        alert('Erro de conexão com o servidor.');
+        console.error(error);
+    }
+}
+</script>
 </body>
 </html>
